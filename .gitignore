@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+.DS_Store
+docker-compose.override.yml
+# Postgres data
+docker/postgres/data/
+
+# MinIO data
+docker/minio/data/
+
+# GitHub Actions cache
+/.github/.cache
