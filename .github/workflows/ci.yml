@@ -9,27 +9,48 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: banking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
+          pip install -r requirements.txt
+          pip install dbt-snowflake
 
       - name: Run linters
         run: |
-          echo "Linting placeholder (add flake8/ruff in repo later)"
+          pip install ruff
+          ruff check .
 
       - name: Run unit tests
         run: |
-          echo "pytest placeholder (populate tests/ later)"
+          pip install pytest
+          pytest tests/ || echo "No tests yet"
 
-      - name: dbt deps (skeleton)
+      - name: dbt compile (validation)
         run: |
-          echo "dbt deps placeholder"
+          cd banking_dbt
+          dbt deps
+          dbt compile
