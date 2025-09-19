@@ -26,29 +26,46 @@ jobs:
           --health-retries 5
 
     steps:
+      # ------------------------
+      # Checkout repo
+      # ------------------------
       - uses: actions/checkout@v4
 
+      # ------------------------
+      # Python setup
+      # ------------------------
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
+      # ------------------------
+      # Install dependencies
+      # ------------------------
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install dbt-snowflake
+          pip install ruff pytest
 
+      # ------------------------
+      # Lint check (Python syntax/style)
+      # ------------------------
       - name: Run linters
         run: |
-          pip install ruff
           ruff check .
 
-      - name: Run unit tests
+      # ------------------------
+      # Run Python unit tests
+      # ------------------------
+      - name: Run unit tests (pytest)
         run: |
-          pip install pytest
-          pytest tests/ || echo "No tests yet"
+          pytest tests/ --maxfail=1 --disable-warnings -q
 
+      # ------------------------
+      # Configure dbt profile
+      # ------------------------
       - name: Setup dbt profile
         run: |
           mkdir -p ~/.dbt
@@ -67,9 +84,12 @@ jobs:
                 schema: ANALYTICS
           EOL
 
-      - name: dbt compile (validation)
+      # ------------------------
+      # dbt checks
+      # ------------------------
+      - name: dbt run + dbt test
         run: |
           cd banking_dbt
           dbt deps
-          dbt compile
-
+          dbt run    # builds dim_accounts + others
+          dbt test   # runs your YAML tests (not_null, unique, accepted_values)
