@@ -1,0 +1,41 @@
+name: CD
+
+on:
+  push:
+    branches: [ main ]  # deploy only from main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Install dependencies (optional, if needed)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # 3️⃣ Simulate deployment of Airflow DAGs
+      - name: Deploy Airflow DAGs locally
+        run: |
+          mkdir -p ./docker/dags_deployed
+          cp -r ./docker/dags/* ./docker/dags_deployed/
+          echo "Airflow DAGs deployed locally"
+
+      # 4️⃣ Simulate deployment of dbt project
+      - name: Deploy dbt project locally
+        run: |
+          mkdir -p ./docker/banking_dbt_deployed
+          cp -r ./banking_dbt/* ./docker/banking_dbt_deployed/
+          echo "dbt project deployed locally"
+
+      # 5️⃣ Optional: Restart Airflow services locally
+      - name: Restart Airflow Docker containers
+        run: |
+          docker-compose -f docker-compose.yml restart airflow-scheduler
+          docker-compose -f docker-compose.yml restart airflow-webserver
+          echo "Airflow containers restarted locally"
