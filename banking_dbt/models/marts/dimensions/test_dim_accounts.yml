@@ -12,5 +12,4 @@ models:
       - name: balance
         tests:
           - not_null
-          - accepted_values:
-              values: [0, 100, 500, 1000, 2000]  # <-- just for demo, adjust later
+
