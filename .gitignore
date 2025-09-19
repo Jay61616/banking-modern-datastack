@@ -15,7 +15,6 @@ banking_dbt/macros/
 banking_dbt/seeds/
 banking_dbt/target/
 banking_dbt/tests/
-dbt_project.yml
 
 postgres-connector.json
 .env
