@@ -61,7 +61,7 @@ jobs:
       # ------------------------
       - name: Run unit tests (pytest)
         run: |
-          pytest tests/ --maxfail=1 --disable-warnings -q
+          PYTHONPATH=. pytest tests/ --maxfail=1 --disable-warnings -q
 
       # ------------------------
       # Configure dbt profile
