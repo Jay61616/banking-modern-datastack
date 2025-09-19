@@ -53,7 +53,7 @@ jobs:
         run: |
           mkdir -p ~/.dbt
           cat > ~/.dbt/profiles.yml <<EOL
-          banking:
+          banking_dbt:
             target: dev
             outputs:
               dev:
@@ -64,7 +64,7 @@ jobs:
                 role: TRANSFORMER
                 database: BANKING
                 warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-                schema: PUBLIC
+                schema: ANALYTICS
           EOL
 
       - name: dbt compile (validation)
