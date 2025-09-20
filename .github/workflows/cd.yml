@@ -2,36 +2,62 @@ name: CD
 
 on:
   push:
-    branches: [ main ]  # deploy only from main
+    branches: [ main ]   # deploy only from main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # ------------------------
+      # Checkout repo
+      # ------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Simulate DAGs deployment
-      - name: Deploy Airflow DAGs (simulation)
-        run: |
-          mkdir -p _deployed/airflow_dags
-          rsync -avz docker/dags/ _deployed/airflow_dags/
-          echo "✅ DAGs copied to _deployed/airflow_dags (simulation)"
+      # ------------------------
+      # Python setup
+      # ------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-      # 3️⃣ Simulate dbt project deployment
-      - name: Deploy dbt project (simulation)
+      # ------------------------
+      # Install dbt
+      # ------------------------
+      - name: Install dbt Snowflake adapter
         run: |
-          mkdir -p _deployed/dbt_project
-          rsync -avz banking_dbt/ _deployed/dbt_project/
-          echo "✅ dbt project copied to _deployed/dbt_project (simulation)"
+          python -m pip install --upgrade pip
+          pip install dbt-snowflake
 
-      # 4️⃣ Info for manual restart
-      - name: Manual restart instructions
+      # ------------------------
+      # Configure dbt profile
+      # ------------------------
+      - name: Setup dbt profile
         run: |
-          echo "--------------------------------------------------"
-          echo " Deployment simulation complete!"
-          echo " To apply changes in your local environment, run:"
-          echo "   docker-compose restart airflow-scheduler airflow-webserver"
-          echo "--------------------------------------------------"
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<EOL
+          banking_dbt:
+            target: prod
+            outputs:
+              prod:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: ACCOUNTADMIN
+                database: BANKING
+                warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+                schema: ANALYTICS
+          EOL
+
+      # ------------------------
+      # Deploy dbt project
+      # ------------------------
+      - name: dbt run + test (prod)
+        run: |
+          cd banking_dbt
+          dbt deps
+          dbt run    # builds production models on Snowflake
+          dbt test   # validates production data
