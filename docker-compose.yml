@@ -1,0 +1,138 @@
+version: '3.8'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.1
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"   # internal Docker network
+      - "29092:29092" # host machine access
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://host.docker.internal:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+
+  connect:
+    image: debezium/connect:2.2
+    depends_on:
+      - kafka
+      - zookeeper
+      - postgres
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: 'kafka:9092'
+      GROUP_ID: '1'
+      CONFIG_STORAGE_TOPIC: 'connect-configs'
+      OFFSET_STORAGE_TOPIC: 'connect-offsets'
+      STATUS_STORAGE_TOPIC: 'connect-status'
+      KEY_CONVERTER_SCHEMAS_ENABLE: 'false'
+      VALUE_CONVERTER_SCHEMAS_ENABLE: 'false'
+      KEY_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+      VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres/data:/var/lib/postgresql/data
+    command: >
+      postgres -c wal_level=logical
+              -c max_wal_senders=10
+              -c max_replication_slots=10
+               
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./docker/minio/data:/data
+    
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: dockerfile-airflow.dockerfile
+    container_name: airflow-webserver
+    restart: always
+    depends_on:
+      - airflow-scheduler
+      - airflow-postgres
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-postgres:5432/${AIRFLOW_DB_NAME}
+    volumes:
+      - ./docker/dags:/opt/airflow/dags
+      - ./docker/logs:/opt/airflow/logs
+      - ./docker/plugins:/opt/airflow/plugins
+      - ./banking_dbt:/opt/airflow/banking_dbt
+      - ./banking_dbt/.dbt:/home/airflow/.dbt
+    ports:
+      - "8080:8080"
+    command: webserver
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile-airflow.dockerfile
+    container_name: airflow-scheduler
+    restart: always
+    depends_on:
+      - airflow-postgres
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-postgres:5432/${AIRFLOW_DB_NAME}
+    volumes:
+      - ./docker/dags:/opt/airflow/dags
+      - ./docker/logs:/opt/airflow/logs
+      - ./docker/plugins:/opt/airflow/plugins
+      - ./banking_dbt:/opt/airflow/banking_dbt
+      - ./banking_dbt/.dbt:/home/airflow/.dbt
+    command: scheduler
+
+
+
+  airflow-postgres:
+    image: postgres:15
+    container_name: airflow-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${AIRFLOW_DB_USER}
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      POSTGRES_DB: ${AIRFLOW_DB_NAME}
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # separate from banking-postgres to avoid conflict
+
+volumes:
+  airflow_postgres_data:
+  postgres_data:
+networks:
+  default:
+    name: banking-mds-net
