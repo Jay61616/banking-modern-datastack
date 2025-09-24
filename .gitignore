@@ -16,7 +16,7 @@ banking_dbt/seeds/
 banking_dbt/target/
 banking_dbt/tests/
 
-
+.env
 __pycache__/
 *.pyc
 .vscode/
