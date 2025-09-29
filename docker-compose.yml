@@ -99,7 +99,7 @@ services:
   airflow-scheduler:
     build:
       context: .
-      dockerfile: Dockerfile-airflow.dockerfile
+      dockerfile: dockerfile-airflow.dockerfile
     container_name: airflow-scheduler
     restart: always
     depends_on:
