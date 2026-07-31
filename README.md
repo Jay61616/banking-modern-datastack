@@ -135,7 +135,7 @@ banking-modern-datastack/
 - **DBT models** (facts, dimensions, snapshots)  
 - **Orchestrated DAGs in Airflow**  
 - **Synthetic banking dataset** for demos  
-- **CI/CD workflows** ensuring reliability  
+- **CI/CD workflows** ensuring reliability 
 
 ---
 
