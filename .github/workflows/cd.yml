@@ -1,0 +1,63 @@
+name: CD
+
+on:
+  push:
+    branches: [ main ]   # deploy only from main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ------------------------
+      # Checkout repo
+      # ------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------
+      # Python setup
+      # ------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # ------------------------
+      # Install dbt
+      # ------------------------
+      - name: Install dbt Snowflake adapter
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-snowflake
+
+      # ------------------------
+      # Configure dbt profile
+      # ------------------------
+      - name: Setup dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<EOL
+          banking_dbt:
+            target: prod
+            outputs:
+              prod:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: ACCOUNTADMIN
+                database: BANKING
+                warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+                schema: ANALYTICS
+          EOL
+
+      # ------------------------
+      # Deploy dbt project
+      # ------------------------
+      - name: dbt run + test (prod)
+        run: |
+          cd banking_dbt
+          dbt deps
+          dbt run    # builds production models on Snowflake
+          dbt test   # validates production data

@@ -1,0 +1,9 @@
+# Kafka
+KAFKA_BOOTSTRAP=host.docker.internal:29092
+KAFKA_GROUP=minio-landing-group
+
+# MinIO
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=raw
