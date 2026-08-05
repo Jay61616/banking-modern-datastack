@@ -12,7 +12,7 @@
 
 ---
 
-## 📌 Project Overview
+## 📌 Project Overview 
 This project demonstrates an **end-to-end modern data stack pipeline** for a **Banking domain**.  
 We simulate **customer, account, and transaction data**, stream changes in real time, transform them into analytics-ready models, and visualize insights — following **best practices of CI/CD and data warehousing**.
 
